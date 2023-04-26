@@ -3,9 +3,11 @@ import { useState, useEffect } from 'react';
 import Spinner from 'react-bootstrap/Spinner';
 import { useApi } from '../contexts/ApiProvider';
 import Post from './Post';
+import More from './More';
 
-export default function Posts({ content }) {
+export default function Posts({ content = 'feed' }) {
   const [posts, setPosts] = useState();
+  const [pagination, setPagination] = useState();
   const api = useApi();
 
   let url;
@@ -27,12 +29,23 @@ export default function Posts({ content }) {
       const response = await api.get(url);
       if (response.ok) {
         setPosts(response.body.data);
+        setPagination(response.body.pagination);
       }
       else {
         setPosts(null);
       }
     })();
   }, [api, url]);
+
+  const loadNextPage = async () => {
+    const response = await api.get(url, {
+      after: posts[posts.length - 1].timestamp
+    });
+    if (response.ok) {
+      setPosts([...posts, ...response.body.data]);
+      setPagination(response.body.pagination);
+    }
+  };
 
   return (
     <>
@@ -41,7 +54,7 @@ export default function Posts({ content }) {
       :
         <>
           {posts === null ?
-             <p>Could not retrieve blog posts.</p>
+            <p>Could not retrieve blog posts.</p>
           :
             <>
               {posts.length === 0 ?
@@ -49,6 +62,7 @@ export default function Posts({ content }) {
               :
                 posts.map(post => <Post key={post.id} post={post} />)
               }
+              <More pagination={pagination} loadNextPage={loadNextPage} />
             </>
           }
         </>
